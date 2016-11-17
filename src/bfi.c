@@ -25,7 +25,8 @@
 	ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 	POSSIBILITY OF SUCH DAMAGE.
 */	
-
+// the following line allows compilation using gcc under Linux
+#define _POSIX_C_SOURCE 200810
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -38,15 +39,18 @@
 #include <termios.h>
 
 
+#define MEMSIZE 30000
+
 /* Brainfuck VM */
-unsigned char *sourcePool = NULL;
-long sourceSize = 0;
-long Sp = 0;
+typedef struct {
+	unsigned char *sourcePool;
+	long sourceSize;
+	long Sp;
+	int thePointer;
+	unsigned char theArray[MEMSIZE];
+} bfvm_s; 
 
-unsigned char theArray[30000];
-int thePointer = 0;
-
-struct termios savedTerm;
+static struct termios savedTerm;
 
 void exitHandler()
 {
@@ -54,77 +58,77 @@ void exitHandler()
 	tcsetattr(0, TCSANOW, &savedTerm);
 }
 
-void run()
+void run(bfvm_s *vm)
 {
-	memset(theArray, 0, 30000);
-	thePointer = 0;
+	memset(vm->theArray, 0, MEMSIZE);
+	vm->thePointer = 0;
 	
-	Sp = 0;
+	vm->Sp = 0;
 	
-	while(Sp < sourceSize) {
+	while(vm->Sp < vm->sourceSize) {
 		int temp;
 		
-		switch(sourcePool[Sp]) {
+		switch(vm->sourcePool[vm->Sp]) {
 			case '>':
-				thePointer++;
-				if(thePointer >= 30000) thePointer = 0;
+				vm->thePointer++;
+				if(vm->thePointer >= MEMSIZE) vm->thePointer = 0;
 				break;
 			
 			case '<':
-				if(thePointer == 0) thePointer = 30000;
-				thePointer--;
+				if(vm->thePointer == 0) vm->thePointer = MEMSIZE;
+				vm->thePointer--;
 				break;
 			
 			case '+':
-				theArray[thePointer]++;
+				vm->theArray[vm->thePointer]++;
 				break;
 			
 			case '-':
-				theArray[thePointer]--;
+				vm->theArray[vm->thePointer]--;
 				break;
 			
 			case '.':
-				putchar((int)theArray[thePointer]);
+				putchar(vm->theArray[vm->thePointer]);
 				break;
 			
 			case ',':
 				temp = getchar();
 				if(temp != 0x04) {	/* ^D sends 0x04 (EOT) in the mode we're running in */
-					theArray[thePointer] = (unsigned char)temp;
+					vm->theArray[vm->thePointer] = (unsigned char)temp;
 				} else {
-					theArray[thePointer] = 0;
+					vm->theArray[vm->thePointer] = 0;
 				}
-				putchar(theArray[thePointer]);
+				putchar(vm->theArray[vm->thePointer]);
 				fflush(stdout);
 				break;
 			
 			case '[':
 				temp = 1; /* nesting level */
-				if(theArray[thePointer] == 0) {
-					Sp++;
-					while(Sp < sourceSize) {
-						if(sourcePool[Sp] == ']') {
+				if(vm->theArray[vm->thePointer] == 0) {
+					vm->Sp++;
+					while(vm->Sp < vm->sourceSize) {
+						if(vm->sourcePool[vm->Sp] == ']') {
 							temp--;
 							if(temp == 0) break; /* found matching brace */
-						} else if(sourcePool[Sp] == '[') {
+						} else if(vm->sourcePool[vm->Sp] == '[') {
 							temp++;
 						}
-						Sp++;
+						vm->Sp++;
 					}
 				}
 				break;
 			
 			case ']':
 				temp = 1;
-				if(theArray[thePointer] != 0) {
-					Sp--;
-					while(Sp > 0) {
-						if(sourcePool[Sp] == '[') {
+				if(vm->theArray[vm->thePointer] != 0) {
+					vm->Sp--;
+					while(vm->Sp > 0) {
+						if(vm->sourcePool[vm->Sp] == '[') {
 							temp--;
 							if(temp == 0) break; /* found matching brace */
-						} else if(sourcePool[Sp] == ']')
+						} else if(vm->sourcePool[vm->Sp] == ']')
 							temp++;
-						Sp--;
+						vm->Sp--;
 					}
 				}
 				break;
@@ -133,7 +137,7 @@ void run()
 				break;
 		}
 		
-		Sp++;
+		vm->Sp++;
 	}
 }
 
@@ -160,20 +164,21 @@ int main(int argc, char **argv)
 	tcsetattr(0, TCSANOW, &newTerm);
 	setvbuf(stdin, NULL, _IONBF, 0);
 	
+	bfvm_s vm;
 	/* git'er done! */
 	fp = fopen(argv[1],"r");
 	if(fp) {
 		struct stat fps;
 		
 		if(fstat(fileno(fp), &fps) == 0) {
-			sourceSize = (size_t)fps.st_size;
-			sourcePool = (unsigned char*)malloc(sourceSize);
+			vm.sourceSize = (size_t)fps.st_size;
+			vm.sourcePool = (unsigned char*)malloc(vm.sourceSize);
 			
-			if(fread(sourcePool, sourceSize, 1, fp) != 1) {
+			if(fread(vm.sourcePool, vm.sourceSize, 1, fp) != 1) {
 				fprintf(stderr, "Error reading from file %s\n", argv[1]);
 				rval = -1;
 			} else {
-				run();
+				run(&vm);
 			}
 		} else {
 			fprintf(stderr, "Error 'stat'ing file %s: %d - %s\n", argv[1], errno, strerror(errno));
@@ -185,7 +190,7 @@ int main(int argc, char **argv)
 		rval = -1;
 	}
 	
-	if(sourcePool) free(sourcePool);
+	free(vm.sourcePool);
 	
-	return 0;
+	return rval;
 }
