@@ -7,23 +7,25 @@ http://en.wikipedia.org/wiki/Brainfuck
 Original author's site seems to be:
 http://www.muppetlabs.com/~breadbox/bf/
 
-hello.b:
+hello.b:  
+~~~~
 >+++++++++[<++++++++>-]<.>++++++[<+++++>-]<-.+++++++..+++.
 >>+++++++[<++++++>-]<++.------------.<++++++++.--------.
 +++.------.--------.>+.>++++++++++.
+~~~~
 
 Excerpted from the author's website:
-	
-								The Language
+###The Language
 
-	A Brainfuck program has an implicit byte pointer, called "the pointer",
+ A Brainfuck program has an implicit byte pointer, called "the pointer",
 which is free to move around within an array of 30000 bytes, initially all
 set to zero. The pointer itself is initialized to point to the beginning of
 this array.
 
-	The Brainfuck programming language consists of eight commands, each of
+ The Brainfuck programming language consists of eight commands, each of
 which is represented as a single character.
 
+~~~~
 > - Increment the pointer.
 < - Decrement the pointer.
 + - Increment the byte at the pointer.
@@ -32,13 +34,14 @@ which is represented as a single character.
 , - Input a byte and store it in the byte at the pointer.
 [ - Jump forward past the matching ] if the byte at the pointer is zero.
 ] - Jump backward to the matching [ unless the byte at the pointer is zero.
+~~~~
 
 [] loops can be nested
 
 Taken directly from:
 http://www.muppetlabs.com/~breadbox/bf/standards.html
 
-		The Unofficial Constraints on Portable Brainfuck Implementations
+###The Unofficial Constraints on Portable Brainfuck Implementations
 
 -	The actual size of the cell array is implementation-defined. However,
 	the array shall always contain at least 9999 cells. (Allowing the size
@@ -73,12 +76,10 @@ http://www.muppetlabs.com/~breadbox/bf/standards.html
 	means.)
 
 This interpreters conformance to the above guidelines:
-	1> The cell array is fixed at 30000 cells
-	2> The cell pointer will wrap around when moved past the ends
-	3> Each cell is an 8 bit unsigned integer, range [0..255]
-	4> Cell values wrap when incremented or decremented beyond that range
-	5> Platform dependent; on Mac OS X, input is allowed until the program
-	   terminates. When a ^D is sent, a zero value is returned to the
-	   program, if a file is the source of input, additional reads will
-	   return zeros
-	6> Yep, pretty much undefined. Good luck!
+
+ 1. The cell array is fixed at 30000 cells
+ 2. The cell pointer will wrap around when moved past the ends
+ 3. Each cell is an 8 bit unsigned integer, range [0..255]
+ 4. Cell values wrap when incremented or decremented beyond that range
+ 5. Platform dependent; on Mac OS X, input is allowed until the program terminates. When a ^D is sent, a zero value is returned to the program, if a file is the source of input, additional reads will return zeros
+ 6. Yep, pretty much undefined. Good luck!
